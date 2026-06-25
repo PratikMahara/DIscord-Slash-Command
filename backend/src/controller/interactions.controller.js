@@ -23,9 +23,9 @@ async function mirrorToSlack(command, username, response, guildId) {
 }
 
 async function saveInteraction(interaction, response, mirrored) {
-  const { id, guild_id, channel_id, member, data } = interaction;
-  const username = member?.user?.username || 'unknown';
-  const userId   = member?.user?.id       || 'unknown';
+  const { id, guild_id, channel_id, member, user, data } = interaction;
+  const username = member?.user?.username || user?.username || 'unknown';
+  const userId   = member?.user?.id       || user?.id       || 'unknown';
   const command  = data?.name             || 'unknown';
   const options  = data?.options          || [];
 
@@ -47,7 +47,7 @@ async function saveInteraction(interaction, response, mirrored) {
 
 function handleReport(interaction) {
   const text     = interaction.data?.options?.find((o) => o.name === 'text')?.value || '';
-  const username = interaction.member?.user?.username || 'someone';
+  const username = interaction.member?.user?.username || interaction.user?.username || 'someone';
   return `Report received from **${username}**: "${text}" — logged and under review.`;
 }
 
@@ -84,7 +84,7 @@ export async function handleInteraction(req, res) {
     // Async work after response is sent
     const mirrored = await mirrorToSlack(
       command,
-      interaction.member?.user?.username || 'unknown',
+      interaction.member?.user?.username || interaction.user?.username || 'unknown',
       responseText,
       interaction.guild_id
     );
