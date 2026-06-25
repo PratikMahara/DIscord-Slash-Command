@@ -1,4 +1,4 @@
-import { verifyKey } from 'discord-interactions';
+import nacl from 'tweetnacl';
 
 export function verifyDiscordRequest(req, res, next) {
   const signature = req.headers['x-signature-ed25519'];
@@ -6,19 +6,25 @@ export function verifyDiscordRequest(req, res, next) {
   const rawBody = req.rawBody;
 
   if (!signature || !timestamp || !rawBody) {
-    return res.status(401).json({ error: 'Missing signature headers' });
+    console.log('Missing headers:', { signature, timestamp, hasBody: !!rawBody });
+    return res.status(401).send('Bad request');
   }
 
-  const isValid = verifyKey(
-    rawBody,
-    signature,
-    timestamp,
-    process.env.DISCORD_PUBLIC_KEY
-  );
+  try {
+    const isValid = nacl.sign.detached.verify(
+      Buffer.from(timestamp + rawBody),
+      Buffer.from(signature, 'hex'),
+      Buffer.from(process.env.DISCORD_PUBLIC_KEY, 'hex')
+    );
 
-  if (!isValid) {
-    return res.status(401).json({ error: 'Invalid signature' });
+    if (!isValid) {
+      console.log('Invalid signature');
+      return res.status(401).send('Invalid signature');
+    }
+
+    next();
+  } catch (err) {
+    console.error('Signature verification error:', err.message);
+    return res.status(401).send('Verification failed');
   }
-
-  next();
 }

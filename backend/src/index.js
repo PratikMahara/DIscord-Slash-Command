@@ -29,7 +29,15 @@ app.use('/api/interactions', express.raw({ type: 'application/json' }), (req, re
 app.use(express.json());
 
 // Routes
-app.use('/api/interactions', verifyDiscordRequest, interactionsRouter);
+// Remove the old one and replace with this
+app.use('/api/interactions', 
+  express.raw({ type: 'application/json' }), 
+  (req, res, next) => {
+    req.rawBody = req.body.toString('utf-8'); // convert Buffer to string
+    req.body = JSON.parse(req.rawBody);
+    next();
+  }
+);
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
 
