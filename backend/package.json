@@ -4,10 +4,11 @@
   "description": "This is an assesment from Abstrabit",
   "license": "ISC",
   "author": "Pratik Mahara",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon src/index.js"
   },
   "dependencies": {
     "axios": "^1.18.1",
