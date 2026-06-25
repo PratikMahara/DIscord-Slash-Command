@@ -11,38 +11,38 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS — allow frontend
+// CORS
 app.use(cors({
   origin: [process.env.FRONTEND_URL, 'http://localhost:5173'],
   credentials: true
 }));
 
-// Raw body capture for Discord signature verification
-// MUST come before express.json()
-app.use('/api/interactions', express.raw({ type: 'application/json' }), (req, res, next) => {
-  req.rawBody = req.body;
-  req.body = JSON.parse(req.body);
-  next();
-});
+// Health check — no body parsing needed
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// JSON for all other routes
+
+app.post('/api/interactions',
+  express.raw({ type: '*/*' }),
+  (req, res, next) => {
+    // req.body is a Buffer here
+    req.rawBody = req.body.toString('utf-8');
+    try {
+      req.body = JSON.parse(req.rawBody);
+    } catch (e) {
+      console.error('Failed to parse body:', req.rawBody);
+      return res.status(400).send('Invalid JSON');
+    }
+    next();
+  },
+  verifyDiscordRequest,
+  interactionsRouter
+);
+
+// JSON for all other routes — AFTER the interactions route
 app.use(express.json());
 
-// Routes
-// Remove the old one and replace with this
-app.use('/api/interactions', 
-  express.raw({ type: 'application/json' }), 
-  (req, res, next) => {
-    req.rawBody = req.body.toString('utf-8'); // convert Buffer to string
-    req.body = JSON.parse(req.rawBody);
-    next();
-  }
-);
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
-
-
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
