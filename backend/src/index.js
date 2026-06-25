@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { verifyDiscordRequest } from './middleware/verifyDiscord.js';
-import interactionsRouter from './routes/interactions.js';
+import { handleInteraction } from './controller/interactions.controller.js';
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 
@@ -24,7 +24,6 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.post('/api/interactions',
   express.raw({ type: '*/*' }),
   (req, res, next) => {
-    // req.body is a Buffer here
     req.rawBody = req.body.toString('utf-8');
     try {
       req.body = JSON.parse(req.rawBody);
@@ -35,7 +34,7 @@ app.post('/api/interactions',
     next();
   },
   verifyDiscordRequest,
-  interactionsRouter
+  handleInteraction
 );
 
 // JSON for all other routes — AFTER the interactions route

@@ -1,5 +1,10 @@
-import { InteractionType, InteractionResponseType } from 'discord-interactions';
 import pool from '../DB/index.js';
+
+// Discord interaction type constants
+const PING                          = 1;
+const APPLICATION_COMMAND           = 2;
+const PONG                          = 1;
+const CHANNEL_MESSAGE_WITH_SOURCE   = 4;
 
 async function mirrorToSlack(command, username, response, guildId) {
   try {
@@ -7,7 +12,7 @@ async function mirrorToSlack(command, username, response, guildId) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: ` *Discord Command*\n*Server:* ${guildId}\n*User:* ${username}\n*Command:* /${command}\n*Response:* ${response}`,
+        text: `*Discord Command*\n*Server:* ${guildId}\n*User:* ${username}\n*Command:* /${command}\n*Response:* ${response}`,
       }),
     });
     return true;
@@ -47,17 +52,19 @@ function handleReport(interaction) {
 }
 
 function handleStatus() {
-  return ` Bot is online and operational. All systems running.`;
+  return `Bot is online and operational. All systems running.`;
 }
 
 export async function handleInteraction(req, res) {
   const interaction = req.body;
 
-  if (interaction.type === InteractionType.PING) {
-    return res.json({ type: InteractionResponseType.PONG });
+  // Discord PING — must respond immediately with PONG (type: 1)
+  if (interaction.type === PING) {
+    return res.status(200).json({ type: PONG });
   }
 
-  if (interaction.type === InteractionType.APPLICATION_COMMAND) {
+  // Slash commands
+  if (interaction.type === APPLICATION_COMMAND) {
     const command = interaction.data?.name;
     let responseText = '';
 
@@ -69,18 +76,18 @@ export async function handleInteraction(req, res) {
       responseText = `Unknown command: /${command}`;
     }
 
-    res.json({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    res.status(200).json({
+      type: CHANNEL_MESSAGE_WITH_SOURCE,
       data: { content: responseText },
     });
 
+    // Async work after response is sent
     const mirrored = await mirrorToSlack(
       command,
       interaction.member?.user?.username || 'unknown',
       responseText,
       interaction.guild_id
     );
-
     await saveInteraction(interaction, responseText, mirrored);
     return;
   }
