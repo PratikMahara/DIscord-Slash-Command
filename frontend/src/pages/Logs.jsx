@@ -7,11 +7,13 @@ import { useToast } from '../context/ToastContext'
 const BASE  = import.meta.env.VITE_API_URL
 const LIMIT = 10
 
+// Backend row: { id, guild_id, channel_id, user_id, username, command, options, response, mirrored, status, created_at }
 const columns = [
-  { key: 'user',      label: 'User' },
-  { key: 'command',   label: 'Command',   render: (v) => <code className="bg-surface-700 px-2 py-0.5 rounded text-brand-400 text-xs">{v}</code> },
-  { key: 'result',    label: 'Result',    render: (v) => <span className={`badge ${v === 'success' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{v}</span> },
-  { key: 'timestamp', label: 'Timestamp', render: (v) => <span className="text-xs text-slate-500">{v}</span> },
+  { key: 'username',   label: 'User' },
+  { key: 'command',    label: 'Command',   render: (v) => <code className="bg-surface-700 px-2 py-0.5 rounded text-brand-400 text-xs">/{v}</code> },
+  { key: 'status',     label: 'Status',    render: (v) => <span className={`badge ${v === 'processed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{v}</span> },
+  { key: 'mirrored',   label: 'Mirrored',  render: (v) => <span className={`badge ${v ? 'bg-brand-600/15 text-brand-400' : 'bg-surface-600 text-slate-400'}`}>{v ? 'Yes' : 'No'}</span> },
+  { key: 'created_at', label: 'Timestamp', render: (v) => <span className="text-xs text-slate-500">{new Date(v).toLocaleString()}</span> },
 ]
 
 export default function Logs() {
@@ -26,7 +28,7 @@ export default function Logs() {
     setLoading(true)
     setError(false)
     axios
-      .get(`${BASE}/logs`, {
+      .get(`${BASE}/dashboard/logs`, {
         params:  { page: p, limit: LIMIT },
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
@@ -36,7 +38,7 @@ export default function Logs() {
       })
       .catch((err) => {
         setError(true)
-        toast(err.response?.data?.message || 'Failed to load logs', 'error')
+        toast(err.response?.data?.error || 'Failed to load logs', 'error')
       })
       .finally(() => setLoading(false))
   }

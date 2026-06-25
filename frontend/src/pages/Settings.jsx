@@ -1,11 +1,7 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import PageHeader     from '../components/PageHeader'
-import ToggleSwitch   from '../components/ToggleSwitch'
-import LoadingSpinner from '../components/LoadingSpinner'
-import { useToast }   from '../context/ToastContext'
-
-const BASE = import.meta.env.VITE_API_URL
+import { useState } from 'react'
+import PageHeader    from '../components/PageHeader'
+import ToggleSwitch  from '../components/ToggleSwitch'
+import { useToast }  from '../context/ToastContext'
 
 const SETTING_DEFS = [
   { key: 'enableReportCommand',    label: 'Enable Report Command',    desc: 'Allow users to submit reports via /report' },
@@ -14,61 +10,37 @@ const SETTING_DEFS = [
   { key: 'enableDiscordMirroring', label: 'Enable Discord Mirroring', desc: 'Mirror bot interactions to a secondary channel' },
 ]
 
+const DEFAULTS = {
+  enableReportCommand:    true,
+  enableStatusCommand:    true,
+  enableAIAnalysis:       false,
+  enableDiscordMirroring: true,
+}
+
 export default function Settings() {
   const toast = useToast()
-  const [settings, setSettings] = useState(null)
+  const [settings, setSettings] = useState(DEFAULTS)
   const [saving,   setSaving]   = useState(false)
-  const [loadErr,  setLoadErr]  = useState(false)
-
-  const authHeader = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-  })
-
-  const load = () => {
-    setLoadErr(false)
-    axios
-      .get(`${BASE}/settings`, authHeader())
-      .then(({ data }) => setSettings(data))
-      .catch((err) => {
-        setLoadErr(true)
-        toast(err.response?.data?.message || 'Failed to load settings', 'error')
-      })
-  }
-
-  useEffect(load, [])
 
   const toggle = (key) => setSettings((s) => ({ ...s, [key]: !s[key] }))
 
   const handleSave = async () => {
     setSaving(true)
-    try {
-      const { data } = await axios.put(`${BASE}/settings`, settings, authHeader())
-      setSettings(data)
-      toast('Settings saved successfully', 'success')
-    } catch (err) {
-      toast(err.response?.data?.message || 'Failed to save settings', 'error')
-    } finally {
-      setSaving(false)
-    }
+    // Simulate save — backend /api/settings endpoint not yet implemented
+    await new Promise((r) => setTimeout(r, 600))
+    setSaving(false)
+    toast('Settings saved (local only — backend endpoint pending)', 'info')
   }
-
-  if (loadErr) return (
-    <div>
-      <PageHeader title="Settings" subtitle="Configure bot behaviour and integrations" />
-      <div className="flex flex-col items-center py-20 gap-2">
-        <p className="text-sm text-red-400">Failed to load settings.</p>
-        <button onClick={load} className="text-xs text-brand-400 hover:underline">Retry</button>
-      </div>
-    </div>
-  )
-
-  if (!settings) return <LoadingSpinner className="py-20" size="lg" />
 
   return (
     <div>
       <PageHeader title="Settings" subtitle="Configure bot behaviour and integrations" />
 
       <div className="max-w-2xl space-y-3">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-xs text-amber-400 mb-2">
+          ⚠ The settings API endpoint is not yet implemented on the backend. Changes are saved locally only.
+        </div>
+
         {SETTING_DEFS.map(({ key, label, desc }) => (
           <div key={key} className="card px-5 py-4 flex items-center justify-between gap-4">
             <div>

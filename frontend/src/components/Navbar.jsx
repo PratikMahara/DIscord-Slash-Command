@@ -12,7 +12,7 @@ export default function Navbar({ onMenuClick }) {
   const { pathname } = useLocation()
   const { user }     = useAuth()
   const title        = TITLES[pathname] ?? 'Dashboard'
-  const initials     = user?.name?.split(' ').map((n) => n[0]).join('').toUpperCase() ?? 'A'
+  const initials     = user?.username?.[0]?.toUpperCase() ?? 'A'
 
   return (
     <header className="h-14 bg-surface-800 border-b border-surface-600 flex items-center justify-between px-4 lg:px-6 shrink-0">
@@ -40,7 +40,7 @@ export default function Navbar({ onMenuClick }) {
           <div className="h-8 w-8 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold text-white">
             {initials}
           </div>
-          <span className="hidden sm:block text-sm text-slate-300">{user?.name ?? 'Admin'}</span>
+          <span className="hidden sm:block text-sm text-slate-300">{user?.username ?? 'Admin'}</span>
         </div>
       </div>
     </header>

@@ -1,14 +1,11 @@
 import { useState } from 'react'
-import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-
-const BASE = import.meta.env.VITE_API_URL
 
 export default function Login() {
   const { login }             = useAuth()
   const navigate              = useNavigate()
-  const [form, setForm]       = useState({ email: '', password: '' })
+  const [form, setForm]       = useState({ username: '', password: '' })
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -17,20 +14,15 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!form.email || !form.password) return setError('All fields are required.')
+    if (!form.username || !form.password) return setError('All fields are required.')
     setLoading(true)
     try {
-      const response = await axios.post(`${BASE}/auth/login`, {
-        email:    form.email,
-        password: form.password,
-      })
-      localStorage.setItem('token', response.data.token)
-      login(form.email, form.password)
+      await login(form.username, form.password)
       navigate('/dashboard')
     } catch (err) {
       setError(
-        err.response?.data?.message ||
         err.response?.data?.error ||
+        err.response?.data?.message ||
         err.message ||
         'Login failed. Please try again.'
       )
@@ -63,12 +55,12 @@ export default function Login() {
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Email</label>
+            <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Username</label>
             <input
-              type="email"
-              value={form.email}
-              onChange={set('email')}
-              placeholder="admin@example.com"
+              type="text"
+              value={form.username}
+              onChange={set('username')}
+              placeholder="admin"
               className="input"
               autoFocus
               disabled={loading}

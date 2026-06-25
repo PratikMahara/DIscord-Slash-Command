@@ -9,19 +9,21 @@ import { useToast } from '../context/ToastContext'
 
 const BASE = import.meta.env.VITE_API_URL
 
-const PRIORITY_BADGE = {
-  high:   'bg-red-500/15 text-red-400 border border-red-500/30',
-  medium: 'bg-amber-500/15 text-amber-400 border border-amber-500/30',
-  low:    'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30',
-}
-
+// Reuse /dashboard/logs filtered to command === 'report'
+// Row shape: { id, username, command, options, response, status, mirrored, created_at }
 const columns = [
-  { key: 'id',        label: 'Report ID',  render: (v) => <span className="font-mono text-xs text-slate-400">{v}</span> },
-  { key: 'user',      label: 'User' },
-  { key: 'message',   label: 'Message',    render: (v) => <span className="max-w-xs truncate block">{v}</span> },
-  { key: 'category',  label: 'Category',   render: (v) => <span className="badge bg-surface-600 text-slate-300">{v}</span> },
-  { key: 'priority',  label: 'Priority',   render: (v) => <span className={`badge ${PRIORITY_BADGE[v] ?? ''}`}>{v}</span> },
-  { key: 'createdAt', label: 'Created At', render: (v) => <span className="text-xs text-slate-500">{v}</span> },
+  { key: 'id',         label: 'ID',         render: (v) => <span className="font-mono text-xs text-slate-400">{String(v).slice(-6)}</span> },
+  { key: 'username',   label: 'User' },
+  { key: 'options',    label: 'Message',    render: (v) => {
+      try {
+        const opts = typeof v === 'string' ? JSON.parse(v) : v
+        return <span className="max-w-xs truncate block">{opts?.[0]?.value ?? '—'}</span>
+      } catch { return <span className="text-slate-500">—</span> }
+    }
+  },
+  { key: 'status',     label: 'Status',     render: (v) => <span className={`badge ${v === 'processed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{v}</span> },
+  { key: 'mirrored',   label: 'Mirrored',   render: (v) => <span className={`badge ${v ? 'bg-brand-600/15 text-brand-400' : 'bg-surface-600 text-slate-400'}`}>{v ? 'Yes' : 'No'}</span> },
+  { key: 'created_at', label: 'Created At', render: (v) => <span className="text-xs text-slate-500">{new Date(v).toLocaleString()}</span> },
 ]
 
 export default function Reports() {
@@ -30,20 +32,24 @@ export default function Reports() {
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(false)
   const [search,   setSearch]   = useState('')
-  const [priority, setPriority] = useState('all')
   const [selected, setSelected] = useState(null)
 
   const load = () => {
     setLoading(true)
     setError(false)
+    // Fetch all logs and filter to /report commands on the frontend
     axios
-      .get(`${BASE}/reports`, {
+      .get(`${BASE}/dashboard/logs`, {
+        params:  { page: 1, limit: 100 },
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
-      .then(({ data }) => setReports(data))
+      .then(({ data }) => {
+        const reportRows = (data.logs ?? []).filter((r) => r.command === 'report')
+        setReports(reportRows)
+      })
       .catch((err) => {
         setError(true)
-        toast(err.response?.data?.message || 'Failed to load reports', 'error')
+        toast(err.response?.data?.error || 'Failed to load reports', 'error')
       })
       .finally(() => setLoading(false))
   }
@@ -51,28 +57,26 @@ export default function Reports() {
   useEffect(load, [])
 
   const filtered = useMemo(() => reports.filter((r) => {
-    const matchSearch   = r.message.toLowerCase().includes(search.toLowerCase()) ||
-                          r.user.toLowerCase().includes(search.toLowerCase())
-    const matchPriority = priority === 'all' || r.priority === priority
-    return matchSearch && matchPriority
-  }), [reports, search, priority])
+    const search_ = search.toLowerCase()
+    return r.username?.toLowerCase().includes(search_) ||
+           r.options?.toLowerCase().includes(search_)
+  }), [reports, search])
+
+  // Parse message text from options JSON for the modal
+  const getMessage = (row) => {
+    try {
+      const opts = typeof row.options === 'string' ? JSON.parse(row.options) : row.options
+      return opts?.[0]?.value ?? '—'
+    } catch { return '—' }
+  }
 
   return (
     <div>
       <PageHeader title="Reports" subtitle={loading ? 'Loading…' : `${reports.length} total reports`} />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="flex-1"><SearchInput value={search} onChange={setSearch} placeholder="Search reports…" /></div>
-        <div className="flex gap-1 bg-surface-800 border border-surface-600 rounded-lg p-1">
-          {['all', 'high', 'medium', 'low'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPriority(p)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${priority === p ? 'bg-brand-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}
-            >
-              {p}
-            </button>
-          ))}
+        <div className="flex-1">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search by user or message…" />
         </div>
       </div>
 
@@ -86,38 +90,36 @@ export default function Reports() {
           <>
             <DataTable columns={columns} data={filtered} loading={loading} onRowClick={setSelected} />
             {!loading && reports.length > 0 && filtered.length === 0 && (
-              <EmptyState message="No reports match your search or filter." />
+              <EmptyState message="No reports match your search." />
             )}
           </>
         )}
       </div>
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={`Report ${selected?.id}`}>
+      <Modal open={!!selected} onClose={() => setSelected(null)} title={`Report — ${selected?.id}`}>
         {selected && (
           <div className="space-y-4 text-sm">
             <div className="grid grid-cols-2 gap-3">
               {[
-                ['User',     selected.user],
-                ['Category', selected.category],
-                ['Priority', selected.priority],
-                ['Created',  selected.createdAt],
+                ['User',      selected.username],
+                ['Status',    selected.status],
+                ['Mirrored',  selected.mirrored ? 'Yes' : 'No'],
+                ['Created',   new Date(selected.created_at).toLocaleString()],
               ].map(([k, v]) => (
                 <div key={k} className="bg-surface-700 rounded-lg px-3 py-2">
                   <p className="text-xs text-slate-500 mb-0.5">{k}</p>
-                  <p className="text-slate-200 capitalize font-medium">{v}</p>
+                  <p className="text-slate-200 font-medium">{v}</p>
                 </div>
               ))}
             </div>
             <div className="bg-surface-700 rounded-lg px-3 py-2">
               <p className="text-xs text-slate-500 mb-1">Message</p>
-              <p className="text-slate-200">{selected.message}</p>
+              <p className="text-slate-200">{getMessage(selected)}</p>
             </div>
-            {selected.aiAnalysis && (
-              <div className="bg-brand-600/10 border border-brand-600/25 rounded-lg px-3 py-3">
-                <p className="text-brand-400 text-xs font-semibold uppercase tracking-wider mb-2">✦ AI Analysis</p>
-                <p className="text-slate-300 text-sm leading-relaxed">{selected.aiAnalysis}</p>
-              </div>
-            )}
+            <div className="bg-surface-700 rounded-lg px-3 py-2">
+              <p className="text-xs text-slate-500 mb-1">Bot Response</p>
+              <p className="text-slate-200">{selected.response}</p>
+            </div>
           </div>
         )}
       </Modal>
