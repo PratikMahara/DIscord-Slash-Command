@@ -7,10 +7,24 @@ import { useToast } from '../context/ToastContext'
 
 const BASE = import.meta.env.VITE_API_URL
 
-// GET /api/dashboard/logs  →  row fields: username, command, status, created_at
+const priorityColor = (v) => {
+  if (!v) return undefined
+  if (v === 'high')   return '#ff4444'
+  if (v === 'medium') return '#ffaa00'
+  if (v === 'low')    return '#44ff88'
+  return undefined
+}
+
+// GET /api/dashboard/logs  →  row fields include ai_summary, ai_tag, ai_priority
 const activityColumns = [
   { key: 'username',   label: 'User' },
   { key: 'command',    label: 'Command',   render: (v) => <code className="bg-surface-700 px-2 py-0.5 rounded text-brand-400 text-xs">/{v}</code> },
+  { key: 'ai_summary', label: 'AI Summary', render: (v) => <span className="text-xs text-slate-400">{v ?? '—'}</span> },
+  { key: 'ai_tag',     label: 'Tag',        render: (v) => <span className="text-xs text-slate-300">{v ?? '—'}</span> },
+  { key: 'ai_priority', label: 'Priority',  render: (v) => v
+      ? <span className="text-xs font-semibold capitalize" style={{ color: priorityColor(v) }}>{v}</span>
+      : <span className="text-xs text-slate-500">—</span>
+  },
   { key: 'status',     label: 'Status',    render: (v) => <span className={`badge ${v === 'processed' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{v}</span> },
   { key: 'created_at', label: 'Timestamp', render: (v) => <span className="text-slate-500 text-xs">{new Date(v).toLocaleString()}</span> },
 ]
