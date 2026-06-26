@@ -13,7 +13,7 @@ const AI_FALLBACK = { summary: 'Could not analyze', tag: 'general', priority: 'l
 
 async function analyzeWithAI(text) {
   const completion = await groq.chat.completions.create({
-    model: 'llama3-8b-8192',
+    model: 'llama-3.1-8b-instant',
     messages: [
       {
         role: 'system',
